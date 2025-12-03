@@ -31,8 +31,10 @@ class preciseApi:
                 fleets.append(fleet)
         return fleets
     
-    def convertRawGeoData(rawData, assetIdMap: None | dict[int, int]=None) -> list[Feature]:
-        features = []
+    def convertRawGeoData(self, rawData, assetIdMap: None | dict[int, int]=None) -> dict[str, list[Feature]]:
+        adds = []
+        updates = []
+        keySet = set(assetIdMap.values() if assetIdMap is not None else [])
         for assetReport in rawData:
             point = project(
                 geometries=[{"x":assetReport['Positions'][0]['Location']['Longitude'], 
@@ -56,13 +58,25 @@ class preciseApi:
                 attributes['VehicleId'] = assetReport['Positions'][0]['FORCEMessages']['VehicleId']
             if(assetIdMap is not None and assetReport['AssetId'] in assetIdMap):
                 attributes["OBJECTID"] = assetIdMap[assetReport['AssetId']]
-
-            feature = Feature(geometry=point, attributes=attributes)
-            features.append(feature)
+                feature = Feature(geometry=point, attributes=attributes)
+                updates.append(feature)
+                keySet.remove(assetIdMap[assetReport['AssetId']])
+            else:
+                feature = Feature(geometry=point, attributes=attributes)
+                adds.append(feature)
+        
+        features = {}
+        if(len(adds)>0):
+            features['adds'] = adds
+        if(len(updates)>0):
+            features['updates'] = updates
+        if(len(keySet)>0):
+            features['deletes'] = list(keySet)
+            
         return features
     
-    def getLatestAssetLocations(self, assetIds: list[int], assetIdMap: None | dict[int, int]=None) -> list[Feature]:
+    def getLatestAssetLocations(self, assetIds: list[int], assetIdMap: None | dict[int, int]=None) -> dict[str, list[Feature]]:
         url = self.__baseUrl + '/reports/LastReport'
         data = requests.post(url, data={"AssetIds":assetIds}, headers=self.__headers).json()
-        return self.convertRawGeoData(data.json()['FleetRawData'][0]['AssetRawData'], assetIdMap)
+        return self.convertRawGeoData(data['FleetRawData'][0]['AssetRawData'], assetIdMap)
         
