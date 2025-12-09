@@ -71,20 +71,11 @@
       "editable": true
     },
     {
-      "name": "SpeedMetersPerSecond",
+      "name": "SpeedMilesPerHour",
       "type": "esriFieldTypeDouble",
       "actualType": "float",
-      "alias": "Speed (Meters per Second)",
+      "alias": "Speed (Miles per Hour)",
       "sqlType": "sqlTypeFloat",
-      "nullable": true,
-      "editable": true
-    },
-    {
-      "name": "EngineSeconds",
-      "type": "esriFieldTypeInteger",
-      "actualType": "int",
-      "alias": "Engine Seconds",
-      "sqlType": "sqlTypeInteger",
       "nullable": true,
       "editable": true
     },
@@ -98,11 +89,11 @@
       "editable": true
     },
     {
-      "name": "OdometerMeters",
-      "type": "esriFieldTypeInteger",
-      "actualType": "int",
-      "alias": "Odometer Meters",
-      "sqlType": "sqlTypeInteger",
+      "name": "OdometerMiles",
+      "type": "esriFieldTypeDouble",
+      "actualType": "float",
+      "alias": "Odometer (Miles)",
+      "sqlType": "sqlTypeFloat",
       "nullable": true,
       "editable": true
     },

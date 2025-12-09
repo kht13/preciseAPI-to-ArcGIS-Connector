@@ -7,14 +7,16 @@ class gisHelper:
     __layer: FeatureLayer | None = None
     __assetIdMap: dict[int, int] | None = None
     def __init__(self, apiKey: str| None = None, username: str | None = None, password: str | None = None):
-        if(apiKey is not None):
-            self.__gis = GIS(api_key=apiKey)
-        else:
-            self.__gis = GIS(username=username, password=password)
         try:
+            if(apiKey is not None):
+                self.__gis = GIS(api_key=apiKey)
+            else:
+                self.__gis = GIS(username=username, password=password)
             self.__gis.content.is_service_name_available("A", "featureService")
         except(KeyError):
             raise Exception("Bad Api Key.")
+        except Exception as e:
+            raise e
         
     
     def setLayer(self, layerName: str):
@@ -41,8 +43,11 @@ class gisHelper:
             if(layer.properties.name==layerName):
                 self.__layer = layer
     
+    def layerExists(self, layerName:str):
+        return not self.__gis.content.is_service_name_available(layerName, "featureService")
+    
     def updateLayer(self, precise: preciseApi, assetIds: list):
-        features = precise.getLatestAssetLocations(assetIds, assetIdMap=self.__assetIdMap)
+        features = precise.getLatestAssetLocations(assetIds=assetIds, assetIdMap=self.__assetIdMap)
         if(self.__layer is None):
             raise Exception("No layer has been set. Try setting a layer with setLayer first.")
         res = self.__layer.edit_features(**features)

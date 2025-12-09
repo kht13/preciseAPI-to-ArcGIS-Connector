@@ -3,11 +3,12 @@ from arcgis.geometry import project
 import requests
 
 class preciseApi:
-    def __init__(self, apiKey: str, userName: str, companyId: int, apiVer: str | None = None):
+    def __init__(self, apiKey: str, userName: str, companyId: int, apiVer: str = 'v202007'):
         self.__headers = {'User-Name': userName, 'Api-Key': apiKey}
         self.__companyId = companyId
-        self.__apiVer = 'v202007' if apiVer is None or apiVer[0]!='v' else apiVer
-        self.__baseUrl = 'https://api-myfleet.precisemrm.com/api/'+self.__apiVer+'/companies/' + str(self.__companyId)
+        if apiVer[0]!='v':
+            apiVer = 'v'+apiVer
+        self.__baseUrl = 'https://api-myfleet.precisemrm.com/api/'+apiVer+'/companies/' + str(self.__companyId)
         data = requests.get(self.__baseUrl+"/fleets", headers = self.__headers)
         if(data.status_code != 200):
             errorMessage = data.text[17:-21]
@@ -15,18 +16,31 @@ class preciseApi:
         
     def getFleetsAndAssets(self):
         url = self.__baseUrl + '/fleets'
-        fleetListData = requests.get(url, headers=self.__headers).json()
+        fleetListData = requests.get(url, headers=self.__headers)
+        if(fleetListData.status_code != 200):
+            if(fleetListData.status_code == 404):
+                errorMessage = "404 - File or directory not found"
+            else:
+                errorMessage = fleetListData.text
+            raise Exception(errorMessage)
         fleets = []
-        for fleetData in fleetListData['FleetList']:
+        for fleetData in fleetListData.json()['FleetList']:
             if(fleetData["Active"]):
-                fleet = {"FleetId": fleetData["FleetId"], "FleetName": fleetData["FleetName"]}
-                fleet["Assets"] = []
-                assetListData = requests.get(url+"/"+str(fleetData["FleetId"])+"/assets", headers=self.__headers).json()
-                for assetData in assetListData['AssetList']:
+                fleet = {"text": "Name: "+fleetData["FleetName"]+"\nID: "+str(fleetData["FleetId"]), "name": fleetData["FleetName"]}
+                fleet["value"] = []
+                assetListData = requests.get(url+"/"+str(fleetData["FleetId"])+"/assets", headers=self.__headers)
+                if(assetListData.status_code != 200):
+                    if(assetListData.status_code == 404):
+                        errorMessage = "404 - File or directory not found"
+                    else:
+                        errorMessage = assetListData.text
+                    raise Exception(errorMessage)
+                for assetData in assetListData.json()['AssetList']:
                     if(assetData["Active"]):
-                        fleet["Assets"].append({
-                            "AssetId": assetData["AssetId"],
-                            "AssetName": assetData["Name"]
+                        fleet["value"].append({
+                            "text":"Name: "+assetData["Name"]+"\nID: "+str(assetData["AssetId"]),
+                            "name": assetData["Name"],
+                            "value": assetData["AssetId"]
                         })
                 fleets.append(fleet)
         return fleets
@@ -48,10 +62,9 @@ class preciseApi:
                 'HeadingDegrees': assetReport['Positions'][0]['HeadingDegrees'],
                 'IgnitionStatus': 1 if assetReport['Positions'][0]['IgnitionStatusOn'] else 0,
                 'ReportTime': assetReport['Positions'][0]['ReportTime'],
-                'SpeedMetersPerSecond': assetReport['Positions'][0]['SpeedMetersPerSecond'],
-                'EngineSeconds': assetReport['Positions'][0]['VehicleMeters']['EngineSeconds'],
+                'SpeedMilesPerHour': assetReport['Positions'][0]['SpeedMetersPerSecond']*3600/1609.344,
                 'IdleSeconds': assetReport['Positions'][0]['VehicleMeters']['IdleSeconds'],
-                'OdometerMeters': assetReport['Positions'][0]['VehicleMeters']['OdometerMeters'],
+                'OdometerMiles': assetReport['Positions'][0]['VehicleMeters']['OdometerMeters']/1609.344,
             }
             if(assetReport['Positions'][0]['FORCEMessages'] is not None):
                 attributes['ErrorStatus'] = assetReport['Positions'][0]['FORCEMessages']['ErrorStatus']
@@ -77,6 +90,13 @@ class preciseApi:
     
     def getLatestAssetLocations(self, assetIds: list[int], assetIdMap: None | dict[int, int]=None) -> dict[str, list[Feature]]:
         url = self.__baseUrl + '/reports/LastReport'
-        data = requests.post(url, data={"AssetIds":assetIds}, headers=self.__headers).json()
+        rawData = requests.post(url, data={"AssetIds":assetIds}, headers=self.__headers)
+        if(rawData.status_code != 200):
+            if(rawData.status_code == 404):
+                errorMessage = "404 - File or directory not found"
+            else:
+                errorMessage = rawData.text
+            raise Exception(errorMessage)
+        data = rawData.json()
         return self.convertRawGeoData(data['FleetRawData'][0]['AssetRawData'], assetIdMap)
         
