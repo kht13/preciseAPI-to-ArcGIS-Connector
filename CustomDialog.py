@@ -9,9 +9,12 @@ from PySide6.QtWidgets import (
     QLabel,
     QFormLayout,
     QVBoxLayout,
+    QHBoxLayout,
     QStackedLayout,
     QWidget,
-    QMessageBox
+    QMessageBox,
+    QFrame,
+    QSizePolicy
 )
 from PySide6.QtGui import QFont, QIntValidator
 from PySide6 import QtCore
@@ -84,6 +87,18 @@ class CustomDialog(QDialog):
             self.arcgisPage = QWidget()
             self.arcgisPageLayout = QFormLayout()
             self.arcgisApiKeyEdit = QLineEdit(self.config["arcgis"]["apiKey"])
+            self.separator = QHBoxLayout()
+            self.separator1 = QFrame()
+            self.separator1.setFrameShape(QFrame.HLine)
+            self.separator1.setSizePolicy(QSizePolicy.Minimum,QSizePolicy.Expanding)
+            self.separator1.setLineWidth(1)
+            self.separator2 = QFrame()
+            self.separator2.setFrameShape(QFrame.HLine)
+            self.separator2.setSizePolicy(QSizePolicy.Minimum,QSizePolicy.Expanding)
+            self.separator2.setLineWidth(1)
+            self.separator.addWidget(self.separator1, stretch=1)
+            self.separator.addWidget(QLabel("or"))
+            self.separator.addWidget(self.separator2, stretch=1)
             self.arcgisUsernameEdit = QLineEdit(self.config["arcgis"]["username"])
             self.arcgisUsernameEdit.textChanged.connect(self.arcgisUsernameTextChanged)
             self.arcgisPasswordEdit = QLineEdit(self.config["arcgis"]["password"])
@@ -93,6 +108,7 @@ class CustomDialog(QDialog):
                 self.arcgisPasswordEdit.setEnabled(False)
             self.arcgisPasswordEdit.setEchoMode(QLineEdit.EchoMode.Password)
             self.arcgisPageLayout.addRow("API Key: ", self.arcgisApiKeyEdit)
+            self.arcgisPageLayout.addRow(self.separator)
             self.arcgisPageLayout.addRow("Username: ", self.arcgisUsernameEdit)
             self.arcgisPageLayout.addRow("Password: ", self.arcgisPasswordEdit)
             self.arcgisPage.setLayout(self.arcgisPageLayout)
