@@ -9,7 +9,9 @@ from PySide6.QtWidgets import (
     QGridLayout,
     QMainWindow,
     QWidget,
-    QMessageBox
+    QMessageBox,
+    QMenuBar,
+    QMenu
 )
 
 from multicombobox import MultiComboBox
@@ -61,6 +63,14 @@ class MainWindow(QMainWindow):
         
         self.setWindowTitle("Precise Arcgis Connector")
         
+        self.customMenuBar = QMenuBar(self)
+        self.settingsMenu = QMenu("&Settings", self)
+        self.optionsAction = QtGui.QAction("&Options", self)
+        self.optionsAction.triggered.connect(self.configureOptions)
+        self.settingsMenu.addAction(self.optionsAction)
+        self.customMenuBar.addMenu(self.settingsMenu)
+        self.setMenuBar(self.customMenuBar)
+        
         self.mainLayout = QGridLayout()
         
         self.mainLayout.addWidget(QLabel("Precise:"), 0, 0, alignment=QtCore.Qt.AlignRight)
@@ -79,7 +89,7 @@ class MainWindow(QMainWindow):
         
         self.mainLayout.addWidget(QLabel("Assets to Sync:"), 2, 0, alignment=QtCore.Qt.AlignRight)
         self.multiComboBox = MultiComboBox()
-        self.commboBoxData = None
+        self.comboBoxData = []
         self.refreshAssetList()
         self.mainLayout.addWidget(self.multiComboBox, 2, 1, 1, 3)
         self.multiComboBox.selectionChanged.connect(self.changeAssetsToSync)
@@ -106,6 +116,7 @@ class MainWindow(QMainWindow):
         self.widget.setLayout(self.mainLayout)
         self.setCentralWidget(self.widget)
         self.show()
+        self.centerOnScreen()
         
         if(self.needsSetup):
             skipPage = None
@@ -235,6 +246,12 @@ class MainWindow(QMainWindow):
         self.syncThreadNeedsKilled = False
         self.syncThread = None
         self.syncStatus = "inactive"
+        
+    def centerOnScreen (self):
+        center = QtGui.QScreen.availableGeometry(QApplication.primaryScreen()).center()
+        geo = self.frameGeometry()
+        geo.moveCenter(center)
+        self.move(geo.topLeft())
     
     def exitWithError(self, error: Exception):
         QMessageBox.critical(
