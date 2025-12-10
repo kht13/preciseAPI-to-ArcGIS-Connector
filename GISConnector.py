@@ -35,7 +35,7 @@ class gisHelper:
                     self.__assetIdMap[feature.attributes['AssetId']] = feature.attributes['OBJECTID'] 
                 return
         fl_definition = None
-        with open("Layer Definition.json") as f:
+        with open("layerDefinitions/syncLayer.json") as f:
             fl_definition = json.load(f)
         fl_definition['name'] = layerName
         flc.manager.add_to_definition({"layers": [fl_definition]})

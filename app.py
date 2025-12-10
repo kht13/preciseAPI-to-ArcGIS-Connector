@@ -101,10 +101,10 @@ class MainWindow(QMainWindow):
         self.syncButton.setFixedSize(150, 150)
         self.syncButtonColors = {"inactive": "black", "active": "lime", "inProgress": "yellow", "error": "red"}
         self.syncButtonIcons = {
-            "inactive": self.svgToPixmap("Power.svg", 200, 200, QtGui.QColor(self.syncButtonColors["inactive"])),
-            "active": self.svgToPixmap("Power.svg", 200, 200, QtGui.QColor(self.syncButtonColors["active"])),
-            "inProgress": self.svgToPixmap("Power.svg", 200, 200, QtGui.QColor(self.syncButtonColors["inProgress"])),
-            "error": self.svgToPixmap("Power.svg", 200, 200, QtGui.QColor(self.syncButtonColors["error"]))
+            "inactive": self.svgToPixmap("icons/Power.svg", 200, 200, QtGui.QColor(self.syncButtonColors["inactive"])),
+            "active": self.svgToPixmap("icons/Power.svg", 200, 200, QtGui.QColor(self.syncButtonColors["active"])),
+            "inProgress": self.svgToPixmap("icons/Power.svg", 200, 200, QtGui.QColor(self.syncButtonColors["inProgress"])),
+            "error": self.svgToPixmap("icons/Power.svg", 200, 200, QtGui.QColor(self.syncButtonColors["error"]))
         }
         self.syncButtonChangeColor("inactive")
         self.syncButton.setIconSize(QtCore.QSize(100,100))
