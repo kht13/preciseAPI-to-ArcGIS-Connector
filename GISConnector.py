@@ -22,7 +22,11 @@ class gisHelper:
     def setLayer(self, layerName: str):
         flc = None
         if not self.__gis.content.is_service_name_available(layerName, "featureService"):
-            item = self.__gis.content.search(query="title:"+layerName, item_type="Feature Layer Collection")[0]
+            item = None
+            searchResults = self.__gis.content.search(query="title:"+layerName, item_type="Feature Layer Collection")
+            for result in searchResults:
+                if(result.name==layerName):
+                    item = result
             flc = FeatureLayerCollection.fromitem(item)
         else:
             emptyService = self.__gis.content.create_service(name = layerName, service_type = 'featureService')
