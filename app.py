@@ -272,7 +272,8 @@ class MainWindow(QMainWindow):
             event.accept()
     
 app = QApplication(sys.argv)
-
+app.setApplicationVersion("0.1.0")
+app.setApplicationName("Precise Arcgis Connector")
 window = MainWindow()
 
 app.exec()
