@@ -75,9 +75,9 @@ class MultiComboBox(QComboBox):
             if isinstance(item_dict['value'], list):
                 item.setCheckState(self.addItems(item_dict['value'], item))
             
-
         if(parent is None):
             self.updateText()
+        self.view().expandAll()
         return parent_checked
             
     def eventFilter(self, object, event):
@@ -131,7 +131,6 @@ class MultiComboBox(QComboBox):
 
     def showPopup(self):
         super().showPopup()
-        self.view().expandAll()
         self.closeOnLineEditClick = True
 
     def hidePopup(self):
