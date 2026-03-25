@@ -135,7 +135,7 @@ class MainWindow(QMainWindow):
                     if(self.__config["options"]["syncInterval"] is None or self.__config["options"]["syncInterval"]<30):
                         self.__config["options"]["syncInterval"] = 120
                         with open("settings.conf", "w") as fp:
-                            json.dump(self.config, fp)
+                            json.dump(self.__config, fp)
                     Thread(target = self.__arcgis.setLayer, args = (self.__config["options"]["layerName"],)).start()
                 self.preciseStatusLabel.setText(self.preciseStatus)
                 self.arcgisStatusLabel.setText(self.arcgisStatus)
