@@ -337,15 +337,16 @@ class CustomDialog(QDialog):
             return invalidInputCount
         layerName = self.optionsLayerNameEdit.text()
         syncInterval = int(self.optionsSyncIntervalEdit.text())
-        if(self.arcgis.layerExists(layerName)):
-            self.layerNameNeedsConfirmation = True
-            self.layerName = layerName
-            while(self.layerNameNeedsConfirmation):
-                time.sleep(0.5)
-            if(self.layerNameConfirmation==QMessageBox.StandardButton.No):
-                return invalidInputCount+1
+        if(layerName != self.config["options"]["layerName"]):
+            if(self.arcgis.layerExists(layerName)):
+                self.layerNameNeedsConfirmation = True
+                self.layerName = layerName
+                while(self.layerNameNeedsConfirmation):
+                    time.sleep(0.5)
+                if(self.layerNameConfirmation==QMessageBox.StandardButton.No):
+                    return invalidInputCount+1
+            self.config["options"]["layerName"] = layerName
         self.arcgis.setLayer(layerName)
-        self.config["options"]["layerName"] = layerName
         self.config["options"]['syncInterval'] = syncInterval
         return invalidInputCount
     

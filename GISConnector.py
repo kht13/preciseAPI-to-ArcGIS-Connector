@@ -20,6 +20,8 @@ class gisHelper:
         
     
     def setLayer(self, layerName: str):
+        if(self.__layer is not None and self.__layer.properties.name==layerName):
+            return
         flc = None
         if not self.__gis.content.is_service_name_available(layerName, "featureService"):
             item = None
