@@ -27,40 +27,10 @@ class MainWindow(QMainWindow):
         self.__precise = None
         self.__config = None
         self.needsSetup = False
+        self.preciseStatus = "Not Connected"
+        self.arcgisStatus = "Not Connected"
         
-        try:
-            with open("settings.conf") as f:
-                self.__config = json.load(f)
-                self.__assets = self.__config["data"]["assetsToSync"]
-            print("Settings file found.")
-        except FileNotFoundError:
-            self.needsSetup = True
-        if(not self.needsSetup):
-            try:
-                self.__precise = preciseApi(
-                    self.__config["precise"]["apiKey"], 
-                    self.__config["precise"]["username"], 
-                    self.__config["precise"]["companyId"]
-                )
-                print("Precise API connection established.")
-            except Exception as e:
-                print("Precise API connection could not be established.")
-                if(str(e) not in ["Bad API Key", "Bad User Name", "Authorization has been denied for this request."]):
-                    self.exitWithError(e)
-            try:
-                self.__arcgis = gisHelper(
-                    apiKey = self.__config["arcgis"]["apiKey"], 
-                    username = self.__config["arcgis"]["username"],
-                    password = self.__config["arcgis"]["password"]
-                )
-                print("ArcGIS connection established.")
-            except Exception as e:
-                print("ArcGIS connection could not be established.")
-                if(str(e) not in ["A general error occurred: Invalid username or password.", "Bad Api Key."]):
-                    self.exitWithError(e)
-        
-        self.needsSetup = self.needsSetup or self.__precise is None or self.__arcgis is None
-        
+        self.setMinimumSize(500, 200)
         self.setWindowTitle("Precise Arcgis Connector")
         
         self.customMenuBar = QMenuBar(self)
@@ -74,14 +44,14 @@ class MainWindow(QMainWindow):
         self.mainLayout = QGridLayout()
         
         self.mainLayout.addWidget(QLabel("Precise:"), 0, 0, alignment=QtCore.Qt.AlignRight)
-        self.preciseStatusLabel = QLabel("Not Connected" if self.__precise is None else "Connected")
+        self.preciseStatusLabel = QLabel(self.preciseStatus)
         self.mainLayout.addWidget(self.preciseStatusLabel, 0, 2, alignment=QtCore.Qt.AlignCenter)
         self.preciseConfigButton = QPushButton("Configure...")
         self.preciseConfigButton.clicked.connect(self.configurePreciseApi)
         self.mainLayout.addWidget(self.preciseConfigButton, 0, 4)
         
         self.mainLayout.addWidget(QLabel("ArcGIS:"), 1, 0, alignment=QtCore.Qt.AlignRight)
-        self.arcgisStatusLabel = QLabel("Not Connected" if self.__arcgis is None else "Connected")
+        self.arcgisStatusLabel = QLabel(self.arcgisStatus)
         self.mainLayout.addWidget(self.arcgisStatusLabel, 1, 2, alignment=QtCore.Qt.AlignCenter)
         self.arcgisConfigButton = QPushButton("Configure...")
         self.arcgisConfigButton.clicked.connect(self.configureArcgisApi)
@@ -90,7 +60,6 @@ class MainWindow(QMainWindow):
         self.mainLayout.addWidget(QLabel("Assets to Sync:"), 2, 0, alignment=QtCore.Qt.AlignRight)
         self.multiComboBox = MultiComboBox()
         self.comboBoxData = []
-        self.refreshAssetList()
         self.mainLayout.addWidget(self.multiComboBox, 2, 1, 1, 3)
         self.multiComboBox.selectionChanged.connect(self.changeAssetsToSync)
         self.comboBoxButton = QPushButton("Refresh List")
@@ -112,38 +81,21 @@ class MainWindow(QMainWindow):
         self.syncButton.clicked.connect(self.syncButtonPressed)
         self.mainLayout.addWidget(self.syncButton, 3, 0, 1, 5, alignment=QtCore.Qt.AlignCenter)
         
+        self.setAllEnabledStatus(False)
+        
         self.widget = QWidget()
         self.widget.setLayout(self.mainLayout)
         self.setCentralWidget(self.widget)
         self.show()
         self.centerOnScreen()
-        
-        if(self.needsSetup):
-            skipPage = None
-            if(self.__precise is not None):
-                skipPage = "precise"
-            elif(self.__arcgis is not None):
-                skipPage = "arcgis"
-            dlg = CustomDialog("all", self.__config, skipPage=skipPage, arcgis=self.__arcgis)
-            if(dlg.exec()):
-                self.__config = dlg.config
-                self.__precise = dlg.precise
-                self.__arcgis = dlg.arcgis
-                self.preciseStatusLabel.setText("Connected")
-                self.arcgisStatusLabel.setText("Connected")
-            else:
-                sys.exit(0)
-        else:
-            if(self.__config["options"]["layerName"] is None):
-                self.configureOptions()
-            if(self.__config["options"]["syncInterval"] is None or self.__config["options"]["syncInterval"]<30):
-                self.__config["options"]["syncInterval"] = 120
-                with open("settings.conf", "w") as fp:
-                    json.dump(self.config, fp)
-            Thread(target = self.__arcgis.setLayer, args = (self.__config["options"]["layerName"],)).start()
+                
         # for threading
         self.timer = QtCore.QBasicTimer()
         self.timer.start(500, self)
+        self.setUpStatus = "inProgress"
+        self.setUpError = None
+        self.setUpThread = Thread(target=self.setUp)
+        self.setUpThread.start()
         self.syncStatus = "inactive"
         self.previousSyncStatus = "inactive"
         self.syncThread = None
@@ -151,7 +103,45 @@ class MainWindow(QMainWindow):
         self.syncThreadNeedsKilled = False
         self.syncThreadResults = None
     
-    def timerEvent(self, event):
+    def timerEvent(self, event: QtCore.QTimerEvent):
+        if(self.setUpStatus!="inactive"):
+            self.preciseStatusLabel.setText(self.preciseStatus)
+            self.arcgisStatusLabel.setText(self.arcgisStatus)
+            if(self.setUpStatus=="error"):
+                self.exitWithError(self.setUpError)
+            elif(self.setUpStatus=="checkComplete"):
+                if(self.needsSetup or self.__precise is None or self.__arcgis is None):
+                    skipPage = None
+                    if(self.__precise is not None):
+                        skipPage = "precise"
+                    elif(self.__arcgis is not None):
+                        skipPage = "arcgis"
+                    print(self.__precise)
+                    dlg = CustomDialog("all", self.__config, skipPage=skipPage, arcgis=self.__arcgis)
+                    if(dlg.exec()):
+                        self.__config = dlg.config
+                        if dlg.precise is not None:
+                            self.__precise = dlg.precise
+                        print(self.__precise)
+                        self.__arcgis = dlg.arcgis
+                        self.preciseStatus = "Connected"
+                        self.arcgisStatus = "Connected"
+                    else:
+                        QApplication.quit()
+                        return
+                else:
+                    if(self.__config["options"]["layerName"] is None):
+                        self.configureOptions()
+                    if(self.__config["options"]["syncInterval"] is None or self.__config["options"]["syncInterval"]<30):
+                        self.__config["options"]["syncInterval"] = 120
+                        with open("settings.conf", "w") as fp:
+                            json.dump(self.config, fp)
+                    Thread(target = self.__arcgis.setLayer, args = (self.__config["options"]["layerName"],)).start()
+                self.preciseStatusLabel.setText(self.preciseStatus)
+                self.arcgisStatusLabel.setText(self.arcgisStatus)
+                self.refreshAssetList()
+                self.setAllEnabledStatus(True)
+                self.setUpStatus = "inactive"
         if(self.syncThreadNeedsKilled and self.syncStatus != "inactive"):
             self.syncStatus = "inactive"
         if(self.syncStatus != self.previousSyncStatus):
@@ -160,6 +150,54 @@ class MainWindow(QMainWindow):
         if(self.syncThreadResults is not None):
             print("["+datetime.datetime.now().strftime("%Y-%m-%d, %I:%M:%S %p")+"] "+str(self.syncThreadResults))
             self.syncThreadResults = None
+            
+    def setUp(self):
+        try:
+            with open("settings.conf") as f:
+                self.__config = json.load(f)
+                self.__assets = self.__config["data"]["assetsToSync"]
+            print("Settings file found.")
+        except FileNotFoundError:
+            self.needsSetup = True
+        if(self.setUpStatus=="inactive"):
+            return
+        if(not self.needsSetup):
+            try:
+                self.preciseStatus = "Connecting..."
+                self.__precise = preciseApi(
+                    self.__config["precise"]["apiKey"], 
+                    self.__config["precise"]["username"], 
+                    self.__config["precise"]["companyId"]
+                )
+                print("Precise API connection established.")
+                self.preciseStatus = "Connected"
+            except Exception as e:
+                print("Precise API connection could not be established.")
+                self.preciseStatus = "Not Connected"
+                if(str(e) not in ["Bad API Key", "Bad User Name", "Authorization has been denied for this request."]):
+                    self.setUpError = e
+                    self.setUpStatus = "error"
+                    return
+            if(self.setUpStatus=="inactive"):
+                return
+            try:
+                self.arcgisStatus = "Connecting..."
+                self.__arcgis = gisHelper(
+                    apiKey = self.__config["arcgis"]["apiKey"], 
+                    username = self.__config["arcgis"]["username"],
+                    password = self.__config["arcgis"]["password"]
+                )
+                print("ArcGIS connection established.")
+                self.arcgisStatus = "Connected"
+            except Exception as e:
+                print("ArcGIS connection could not be established.")
+                self.arcgisStatus = "Not Connected"
+                if(str(e) not in ["A general error occurred: Invalid username or password.", "Bad Api Key."]):
+                    self.setUpError = e
+                    self.setUpStatus = "error"
+                    return
+        if(self.setUpStatus!="inactive"):
+            self.setUpStatus = "checkComplete"
     
     def changeAssetsToSync(self):
         self.__assets = self.multiComboBox.getSelectedValues()
@@ -205,6 +243,14 @@ class MainWindow(QMainWindow):
             self.syncThread.start()
         else:
             self.syncThreadNeedsKilled = True
+    
+    def setAllEnabledStatus(self, enabled: bool):
+        self.optionsAction.setEnabled(enabled)
+        self.preciseConfigButton.setEnabled(enabled)
+        self.arcgisConfigButton.setEnabled(enabled)
+        self.multiComboBox.setEnabled(enabled)
+        self.comboBoxButton.setEnabled(enabled)
+        self.syncButton.setEnabled(enabled)
     
     def syncButtonChangeColor(self, status: str):
         self.syncButton.setIcon(self.syncButtonIcons[status])
@@ -259,17 +305,19 @@ class MainWindow(QMainWindow):
             "An error has occurred!", 
             "The app encountered an error while running. Please refer to the following error message:\n\n"+str(error)
         )
-        sys.exit(0)
+        QApplication.quit()
     
-    def closeEvent(self, event):
-        if self.__config is not None: 
+    def closeEvent(self, event: QtGui.QCloseEvent):
+        if(self.setUpStatus!="inactive"):
+            self.setUpStatus="inactive"
+        if self.setUpError is None and self.__config is not None: 
             with open("settings.conf", 'w') as fp:
                 json.dump(self.__config, fp)
         if(self.syncThread is not None and self.syncThread.is_alive()):
             self.syncThreadNeedsKilled = True
             while(self.syncThreadNeedsKilled):
                 time.sleep(0.1)
-            event.accept()
+        event.accept()
     
 app = QApplication(sys.argv)
 app.setApplicationVersion("0.1.0")
