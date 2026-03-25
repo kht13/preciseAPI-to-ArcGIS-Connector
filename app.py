@@ -271,11 +271,9 @@ class MainWindow(QMainWindow):
     
     def syncAssets(self):
         self.syncThreadStatus = "active"
-        nextSync = time.time()
+        lastSync = 0
         while not self.syncThreadNeedsKilled:
-            nextSync+=120
-            if(nextSync<time.time()):
-                nextSync = time.time()+120
+            lastSync = time.time()
             self.syncThreadStatus = "syncing"
             try:
                 self.syncThreadResults = self.__arcgis.updateLayer(self.__precise, assetIds=self.__assets)
@@ -284,11 +282,11 @@ class MainWindow(QMainWindow):
                 print("["+datetime.datetime.now().strftime("%Y-%m-%d, %I:%M:%S %p")+"] Error: "+str(e))
                 self.syncStatus = "error"
             self.syncThreadStatus = "idle"
-            while(nextSync-1>time.time() and not self.syncThreadNeedsKilled):
+            while(lastSync+self.__config["options"]["syncInterval"]-1>time.time() and not self.syncThreadNeedsKilled):
                 time.sleep(1)
             if(self.syncThreadNeedsKilled):
                 break
-            time.sleep(max(0.1,nextSync-time.time()))
+            time.sleep(max(0.1,lastSync+self.__config["options"]["syncInterval"]-time.time()))
         self.syncThreadNeedsKilled = False
         self.syncThread = None
         self.syncStatus = "inactive"
