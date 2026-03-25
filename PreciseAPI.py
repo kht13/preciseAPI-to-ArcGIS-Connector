@@ -49,13 +49,16 @@ class preciseApi:
         adds = []
         updates = []
         keySet = set(assetIdMap.values() if assetIdMap is not None else [])
-        for assetReport in rawData:
-            point = project(
-                geometries=[{"x":assetReport['Positions'][0]['Location']['Longitude'], 
-                        "y":assetReport['Positions'][0]['Location']['Latitude']}],
-                in_sr = 4326,
-                out_sr = 3857
-            )[0]
+        #project takes a long time each time it is used, so it is faster to build geometries and project all
+        points = project(
+                    geometries=
+                        [{"x":assetReport['Positions'][0]['Location']['Longitude'], 
+                          "y":assetReport['Positions'][0]['Location']['Latitude']}
+                         for assetReport in rawData], 
+                    in_sr = 4326, 
+                    out_sr = 3857)
+        for i in range(len(rawData)):
+            assetReport = rawData[i]
             attributes = {
                 'AssetId': assetReport['AssetId'],
                 'AssetName': assetReport['AssetName'],
@@ -71,11 +74,11 @@ class preciseApi:
                 attributes['VehicleId'] = assetReport['Positions'][0]['FORCEMessages']['VehicleId']
             if(assetIdMap is not None and assetReport['AssetId'] in assetIdMap):
                 attributes["OBJECTID"] = assetIdMap[assetReport['AssetId']]
-                feature = Feature(geometry=point, attributes=attributes)
+                feature = Feature(geometry=points[i], attributes=attributes)
                 updates.append(feature)
                 keySet.remove(assetIdMap[assetReport['AssetId']])
             else:
-                feature = Feature(geometry=point, attributes=attributes)
+                feature = Feature(geometry=points[i], attributes=attributes)
                 adds.append(feature)
         
         features = {}
